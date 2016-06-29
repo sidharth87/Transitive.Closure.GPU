@@ -1,10 +1,10 @@
 #ifndef SPARSE_H
 #define SPARSE_H
 
-#include "../thrust/sort.h"
-#include "../thrust/reduce.h"
-#include "../thrust/scan.h"
-#include "../thrust/inner_product.h"
+#include <thrust/sort.h>
+#include <thrust/reduce.h>
+#include <thrust/scan.h>
+#include <thrust/inner_product.h>
 //#include <thrust-1.8/system/cuda/experimental/pinned_allocator.h>
 
 //cusp and thrust
