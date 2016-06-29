@@ -233,9 +233,9 @@ __device__ __forceinline__ void prescanI(T *data, const int n)
 	__syncthreads();
 }
 
-#include "sort.inl"
-#include "reduce.inl"
-#include "reduce_global.inl"
+//#include "sort.inl"
+//#include "reduce.inl"
+//#include "reduce_global.inl"
 //#include "radix_sort.inl"
 
 #endif
