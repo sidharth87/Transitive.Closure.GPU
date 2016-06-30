@@ -35,7 +35,7 @@ opt:
 debug:
 	$(MAKE) OPT_FLAGS="$(DEBUG)" NVCC_OPT_FLAGS="$(CUDA_DEBUG)"
 
-SRCS=../src/Fill_Test.cu $(wildcard ../include/*.cu)
+SRCS=../src/Transitive_Closure.cu $(wildcard ../include/*.cu)
 OBJS=$(SRCS:.cu=.o)
 INCLUDE_FILES=$(wildcard ../include/*.h) $(wildcard ../include/*.inl)
 CUDA_INCLUDE_FILES=$(wildcard ../include/*.cuh) $(wildcard ../include/*.cinl)
