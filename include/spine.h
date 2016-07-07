@@ -7,7 +7,7 @@
 #define ORDERING    ROW_MAJOR
 
 template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE, size_t BINS>
-struct spine         //dynamic buffer
+struct spine         //spine
 {
     cusp::array1d<dynamic_buffer*, MEM_TYPE> buffer_ptr;              //row sizes
     int size;
