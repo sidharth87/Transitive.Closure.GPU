@@ -4,13 +4,13 @@ void Transitive_closure(const std::string &filename)
 	cudaSetDevice(0);
 
 	int dbuf1_size = 256;
-	int dbuf2_size = 256;
+	int dbuf2_size = 512;
 
 	dynamic_buffer<unsigned int, cusp::device_memory> gbuf1;
 	dynamic_buffer<unsigned int, cusp::device_memory> gbuf2;
 
-        cusp::array1d<unsigned int, cusp::host_memory> cbuf1;
-	cusp::array1d<unsigned int, cusp::host_memory> cbuf2;
+        cusp::array1d<unsigned int, cusp::host_memory> cbuf1(dbuf1_size);
+	cusp::array1d<unsigned int, cusp::host_memory> cbuf2(dbuf2_size);
 
 	cusp::array1d<unsigned int, cusp::host_memory> output_buffer;
 
@@ -35,7 +35,7 @@ void Transitive_closure(const std::string &filename)
 
 	gbuf1.insert(gbuf2);
 
-	output_buffer = gbu1.dat_buffer;
+	output_buffer = gbuf1.data_buffer;
 
 	for (int i = 0; i < gbuf1.used_size; i++)
 	  printf("output buffer %d = %d\n", i, output_buffer[i]);

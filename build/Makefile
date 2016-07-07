@@ -3,7 +3,7 @@ CPP=g++
 NVCC=/usr/local/cuda/bin/nvcc
 
 OMP=-fopenmp
-OPT=-O3
+OPT=-g
 DEBUG=-g -Wall -Wno-reorder
 CUDA_DEBUG=-g -G
 CUDA_CC_FLAGS=--generate-code arch=compute_30,code=sm_30 -m64 -Xcompiler -rdynamic -Xcompiler -fopenmp
@@ -11,7 +11,7 @@ LD_LIBS=-lcuda -lcudart -lcublas -lrt -llapack -lgomp
 #LIB_INCLUDE=-L /usr/local/cuda/lib64
 CUDA_INCLUDE=-I../ -I../include -I../cub -I/usr/local/cuda/include -I/usr/local/cuda/NVIDIA_CUDA-7.0_Samples/common/inc -I/usr/local/cuda-7.5/include
 #-I/usr/local/cuda-5.0/samples/common/inc/
-PROJECT=DCSR
+PROJECT=TC
 
 #default to optimized build for now
 OPT_FLAGS=$(OPT)

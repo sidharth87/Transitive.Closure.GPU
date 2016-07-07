@@ -1,7 +1,7 @@
-#include "dynamic_buffer.h"
-#include "spine.h"
 #include "Matrix_Test.h"
 #include "load_matrix.h"
+#include "dynamic_buffer.h"
+#include "spine.h"
 
 void Transitive_closure(const std::string &filename);
 void Matrix_Test(const std::string filename);

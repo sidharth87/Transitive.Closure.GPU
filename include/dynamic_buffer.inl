@@ -8,7 +8,7 @@ namespace device
 template <typename VALUE_TYPE>
 //__launch_bounds__(BLOCK_THREAD_SIZE,1)
 __global__ void 
-dynamic_buffer_insert(VALUE_TYPE *data_buff_out, VALUE_TYPE *data_buff_in, size_t out_size, size_t in_size)
+dynamic_buffer_insert(VALUE_TYPE *data_buff_out, const VALUE_TYPE *data_buff_in, size_t out_size, const size_t in_size)
 {
         const int THREADS_PER_BLOCK = blockDim.x;
         const int thread_id   = THREADS_PER_BLOCK * blockIdx.x + threadIdx.x;    // global thread index

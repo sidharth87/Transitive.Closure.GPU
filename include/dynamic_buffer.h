@@ -2,10 +2,11 @@
 #define DYNAMIC_BUFFER_H
 
 #include "sparse.h"
+#include "dynamic_buffer.inl"
 
 #define BLOCK_SIZE 512
 #define BLOCK_COUNT 64
-#define thrust::raw_pointer_cast TPC
+#define TPC(x) thrust::raw_pointer_cast(x)
 
 #define RESIZE_MULTIPLIER 1.5
 #define ORDERING    ROW_MAJOR
@@ -49,10 +50,11 @@ struct dynamic_buffer         //dynamic buffer
         {
             resize((used_size + buff.used_size)*RESIZE_MULTIPLIER);
             total_size = (used_size + buff.used_size)*RESIZE_MULTIPLIER;
-            used_size = used_size + buff.used_size;
         }
-       
-        dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC (&data_buffer[0]), TPC (&buff.data_buffer[0]), used_size, buff.used_size);
+        printf("In size = %d Out size = %d\n", used_size, buff.used_size);       
+        device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0]), TPC(&buff.data_buffer[0]), used_size, buff.used_size);
+
+        used_size = used_size + buff.used_size;
     }
 
     // based on first index of the predicate

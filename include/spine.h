@@ -9,7 +9,7 @@
 template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE, size_t BINS>
 struct spine         //spine
 {
-    cusp::array1d<dynamic_buffer*, MEM_TYPE> buffer_ptr;              //row sizes
+    cusp::array1d<dynamic_buffer<VALUE_TYPE, MEM_TYPE>*, MEM_TYPE> buffer_ptr;              //row sizes
     int size;
     size_t num_entries;     // number of currently filled entries
 
