@@ -11,16 +11,16 @@
 #define RESIZE_MULTIPLIER 1.5
 #define ORDERING    ROW_MAJOR
 
-template <typename VALUE_TYPE, typename MEM_TYPE>
+template <typename VALUE_TYPE, typename MEM_TYPE, size_t tuple_size>
 struct dynamic_buffer         //dynamic buffer
 {
-    cusp::array1d<VALUE_TYPE, MEM_TYPE> data_buffer;              //row sizes
+    cusp::array1d<VALUE_TYPE, MEM_TYPE> data_buffer[tuple_size];              //row sizes
     //cusp::array1d<unsigned char, MEM_TYPE> status_buffer;              //row sizes
 
     unsigned char is_sorted;
     size_t total_size;      // How many total entries are there in data_buffer
     size_t used_size;       // How many entries are filled with values
-    size_t tuple_size;      // number of variables/columns in the predicate/in each tuple
+    //size_t tuple_size;      // number of variables/columns in the predicate/in each tuple
 
     dynamic_buffer()
     {}
@@ -31,7 +31,8 @@ struct dynamic_buffer         //dynamic buffer
     // Resize the buffer using cusp resize
     void resize(const size_t new_size)
     {
-       data_buffer.resize(new_size);
+       for (int i = 0; i < tupple_size; i++)
+           data_buffer[i].resize(new_size);
     }
 
     // Check if resize is required
@@ -52,20 +53,46 @@ struct dynamic_buffer         //dynamic buffer
             total_size = (used_size + buff.used_size)*RESIZE_MULTIPLIER;
         }
         printf("In size = %d Out size = %d\n", used_size, buff.used_size);       
-        device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0]), TPC(&buff.data_buffer[0]), used_size, buff.used_size);
+        
+	for (int i = 0; i < tupple_size; i++)
+	    device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[i][0]), TPC(&buff.data_buffer[i][0]), used_size, buff.used_size);
 
         used_size = used_size + buff.used_size;
+        is_sorted = 0;
     }
 
     // based on first index of the predicate
     // p-ary search for multiple threads
-    void select(VALUE_TYPE value_x)
+    dynamic_buffer select(VALUE_TYPE value_x, int index_x)
     {
+	if (is_sorted == 0)
+	{
+	    switch(tupple_size)
+	    {
+		case 1:
+  		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size);
+		break;
+
+		case 2:
+		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin() )));
+		break;
+
+		case 3:
+		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin(), data_buffer[2].begin() )));
+		break;
+
+	    }
+	    is_sorted = 1;
+	}
+
+	// search
+	
+	return NULL;
     }
 
     // based on first and second index of the predicate
     // p-ary search for multiple threads
-    void select(VALUE_TYPE value_x, VALUE_TYPE value_y)
+    void select(VALUE_TYPE value_x, int index_x, VALUE_TYPE value_y, int index_y)
     {
     }
 };
