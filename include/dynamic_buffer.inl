@@ -31,11 +31,11 @@ dynamic_buffer_serch()
 
 template <typename VALUE_TYPE>
 __global__ void 
-parySearchGPU(VALUE_TYPE ∗data, int range_length, int∗ search_keys, int∗ results)
+parySearchGPU(VALUE_TYPE *data, int range_length, int *search_keys, int *results)
 {
 	const int THREADS_PER_BLOCK = blockDim.x;
-	shared int cache[THREADS_PER_BLOCK+2];		// cache for boundary keys indexed by threadId
-	shared int range_offset;					// index to subset for current iteration
+	__shared__ int cache[THREADS_PER_BLOCK+2];		// cache for boundary keys indexed by threadId
+	__shared__ int range_offset;					// index to subset for current iteration
 
 	int sk, old_range_length=range_length,range_start;
 	// initialize search range using a single thread
@@ -55,12 +55,12 @@ parySearchGPU(VALUE_TYPE ∗data, int range_length, int∗ search_keys, int∗ r
 	{
 		range_length = range_length/THREADS_PER_BLOCK;
 		// check for division underflow
-		if (range_length ∗ THREADS_PER_BLOCK < old_range_length)
+		if (range_length * THREADS_PER_BLOCK < old_range_length)
 			range_length+=1;
 		old_range_length=range_length;
 
 		// cache the boundary keys
-		range_start = range_offset + threadIdx.x ∗ range_length;
+		range_start = range_offset + threadIdx.x * range_length;
 		cache[threadIdx.x]=data[range_start];
 		syncthreads();
 

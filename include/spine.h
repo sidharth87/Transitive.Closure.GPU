@@ -6,10 +6,10 @@
 
 #define ORDERING    ROW_MAJOR
 
-template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE, size_t BINS>
+template <typename INDEX_TYPE, typename VALUE_TYPE, typename MEM_TYPE, size_t tuple_size>
 struct spine         //spine
 {
-    cusp::array1d<dynamic_buffer<VALUE_TYPE, MEM_TYPE>*, MEM_TYPE> buffer_ptr;              //row sizes
+    cusp::array1d<dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size>*, MEM_TYPE> buffer_ptr;              //row sizes
     int size;
     size_t num_entries;     // number of currently filled entries
 
@@ -19,7 +19,7 @@ struct spine         //spine
     {}
 
     // Resize the buffer using cusp resize
-    void resize(const size_t n_tuples, const size_t n_gaps, const size_t tuple_size)
+    void resize(const size_t n_tuples, const size_t n_gaps, const size_t tuple_size1)
     {
     }
 
@@ -44,6 +44,7 @@ struct spine         //spine
 
     int hash(INDEX_TYPE value_x)
     {
+	return 0;
     }
 };
 

@@ -4,8 +4,8 @@
 #include "sparse.h"
 #include "dynamic_buffer.inl"
 
-#define BLOCK_SIZE 512
-#define BLOCK_COUNT 64
+#define BLOCK_SIZE 32
+#define BLOCK_COUNT 1
 #define TPC(x) thrust::raw_pointer_cast(x)
 
 #define RESIZE_MULTIPLIER 1.5
@@ -31,7 +31,7 @@ struct dynamic_buffer         //dynamic buffer
     // Resize the buffer using cusp resize
     void resize(const size_t new_size)
     {
-       for (int i = 0; i < tupple_size; i++)
+       for (int i = 0; i < tuple_size; i++)
            data_buffer[i].resize(new_size);
     }
 
@@ -44,7 +44,7 @@ struct dynamic_buffer         //dynamic buffer
     
     // Check if resize is required first
     // Concatenate new tuples onto the end of data_buffer (sorting is done lazily)
-    void insert(const dynamic_buffer<VALUE_TYPE, MEM_TYPE>& buff)
+    void insert(const dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size>& buff)
     {
         
         if (used_size + buff.used_size > total_size)
@@ -54,7 +54,7 @@ struct dynamic_buffer         //dynamic buffer
         }
         printf("In size = %d Out size = %d\n", used_size, buff.used_size);       
         
-	for (int i = 0; i < tupple_size; i++)
+	for (int i = 0; i < tuple_size; i++)
 	    device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[i][0]), TPC(&buff.data_buffer[i][0]), used_size, buff.used_size);
 
         used_size = used_size + buff.used_size;
@@ -63,14 +63,14 @@ struct dynamic_buffer         //dynamic buffer
 
     // based on first index of the predicate
     // p-ary search for multiple threads
-    dynamic_buffer select(VALUE_TYPE value_x, int index_x)
+    void select(VALUE_TYPE value_x, int index_x)
     {
 	if (is_sorted == 0)
 	{
-	    switch(tupple_size)
+	    switch(tuple_size)
 	    {
 		case 1:
-  		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size);
+  		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
 		break;
 
 		case 2:
@@ -87,7 +87,7 @@ struct dynamic_buffer         //dynamic buffer
 
 	// search
 	
-	return NULL;
+	return;// NULL;
     }
 
     // based on first and second index of the predicate
