@@ -86,6 +86,9 @@ struct dynamic_buffer         //dynamic buffer
 	}
 
 	// search
+        //cusp::array1d<VALUE_TYPE, MEM_TYPE> result;
+	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), used_size, 5/*, TPC(&result[0])*/);
+        //printf("index = %d\n", result[0]);
 	
 	return;// NULL;
     }

@@ -1,6 +1,7 @@
 #ifndef DYNAMIC_BUFFER_DEVICE
 #define DYNAMIC_BUFFER_DEVICE
 
+#include<scan.h>
 
 namespace device
 {
@@ -29,13 +30,14 @@ dynamic_buffer_serch()
 
 
 
-template <typename VALUE_TYPE>
+template <typename VALUE_TYPE, int THREADS_PER_BLOCK>
 __global__ void 
-parySearchGPU(VALUE_TYPE *data, int range_length, int *search_keys, int *results)
+parySearchGPU(VALUE_TYPE *data, int range_length, int search_keys/*, int* results*/)
 {
-	const int THREADS_PER_BLOCK = blockDim.x;
+	//const int THREADS_PER_BLOCK = blockDim.x;
 	__shared__ int cache[THREADS_PER_BLOCK+2];		// cache for boundary keys indexed by threadId
 	__shared__ int range_offset;					// index to subset for current iteration
+        int local_result;
 
 	int sk, old_range_length=range_length,range_start;
 	// initialize search range using a single thread
@@ -44,7 +46,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, int *search_keys, int *results
 		range_offset=0;
 		// cache search key and upper bound in shared memory
 		cache[THREADS_PER_BLOCK]= 0x7FFFFFFF;
-		cache[THREADS_PER_BLOCK+1]= search_keys[blockIdx.x];
+		cache[THREADS_PER_BLOCK+1]= search_keys;//search_keys[blockIdx.x];
 	}
 
 	// require a sync, since each thread is going to read the above now
@@ -76,11 +78,13 @@ parySearchGPU(VALUE_TYPE *data, int range_length, int *search_keys, int *results
 	// store search result
 	range_start = range_offset + threadIdx.x;
 	if (sk==data[range_start])
-		results[blockIdx.x]=range_start;
+	{
+	    //local_result++;
+	    printf("[%d] ----> %d\n", threadIdx.x, range_start);
+	}
+
+        
 }
-
-
-
 
 }       //namespace device
 
