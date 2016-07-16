@@ -63,7 +63,7 @@ struct dynamic_buffer         //dynamic buffer
 
     // based on first index of the predicate
     // p-ary search for multiple threads
-    void select(VALUE_TYPE value_x, int index_x)
+    dynamic_buffer<VALUE_TYPE, cusp::host_memory, tuple_size> select(VALUE_TYPE value_x, int index_x)
     {
 	if (is_sorted == 0)
 	{
@@ -87,10 +87,33 @@ struct dynamic_buffer         //dynamic buffer
 
 	// search
         //cusp::array1d<VALUE_TYPE, MEM_TYPE> result;
-	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), used_size, 5/*, TPC(&result[0])*/);
-        //printf("index = %d\n", result[0]);
+        int h_lower_bound = 0, h_upper_bound = 0;
+        int *g_lower_bound, *g_upper_bound;
+        cudaMalloc(&g_lower_bound, sizeof(int));
+        cudaMalloc(&g_upper_bound, sizeof(int));
+
+	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), used_size, value_x, (g_lower_bound), (g_upper_bound));
+
+        cudaMemcpy(&h_lower_bound, g_lower_bound, sizeof(int), cudaMemcpyDeviceToHost); 
+        cudaMemcpy(&h_upper_bound, g_upper_bound, sizeof(int), cudaMemcpyDeviceToHost); 
+        printf("Query range = %d %d\n", h_lower_bound, h_upper_bound);
+
+        dynamic_buffer<unsigned int, cusp::host_memory, tuple_size> output;
+        for (int i = 0; i < tuple_size; i++)
+        {
+          cusp::array1d<unsigned int, cusp::host_memory> temp(h_upper_bound - h_lower_bound + 1);
+          for (int j = 0; j < h_upper_bound - h_lower_bound + 1; j++)
+          {
+            temp[j] = data_buffer[i][j + h_lower_bound];
+          }
+          output.data_buffer[i] = temp;
+        }
+
+        output.is_sorted = 1;
+        output.total_size = h_upper_bound - h_lower_bound + 1;
+        output.used_size = h_upper_bound - h_lower_bound + 1; 
 	
-	return;// NULL;
+	return output;
     }
 
     // based on first and second index of the predicate

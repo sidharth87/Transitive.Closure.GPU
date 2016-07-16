@@ -22,22 +22,15 @@ dynamic_buffer_insert(VALUE_TYPE *data_buff_out, const VALUE_TYPE *data_buff_in,
 }
 
 
-__global__ void 
-dynamic_buffer_serch()
-{
-
-}
-
-
-
 template <typename VALUE_TYPE, int THREADS_PER_BLOCK>
 __global__ void 
-parySearchGPU(VALUE_TYPE *data, int range_length, int search_keys/*, int* results*/)
+parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* start_index, int* stop_index)
 {
 	//const int THREADS_PER_BLOCK = blockDim.x;
 	__shared__ int cache[THREADS_PER_BLOCK+2];		// cache for boundary keys indexed by threadId
 	__shared__ int range_offset;					// index to subset for current iteration
-        int local_result;
+        //int local_result;
+        int range_length_copy = range_length;
 
 	int sk, old_range_length=range_length,range_start;
 	// initialize search range using a single thread
@@ -53,6 +46,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, int search_keys/*, int* result
 	syncthreads();
 
 	sk = cache[THREADS_PER_BLOCK+1];
+
 	while (range_length>THREADS_PER_BLOCK)
 	{
 		range_length = range_length/THREADS_PER_BLOCK;
@@ -77,11 +71,49 @@ parySearchGPU(VALUE_TYPE *data, int range_length, int search_keys/*, int* result
 
 	// store search result
 	range_start = range_offset + threadIdx.x;
-	if (sk==data[range_start])
+	if (sk==data[range_start] && sk < data[range_start+1])
 	{
 	    //local_result++;
-	    printf("[%d] ----> %d\n", threadIdx.x, range_start);
+            *stop_index = range_start;
+	    //printf("Upper [%d] ----> %d\n", threadIdx.x, range_start);
 	}
+
+        range_length = range_length_copy;
+        old_range_length = range_length_copy;
+        range_start = 0;
+        range_offset = 0;
+        syncthreads();
+        while (range_length>THREADS_PER_BLOCK)
+        {
+                range_length = range_length/THREADS_PER_BLOCK;
+                // check for division underflow
+                if (range_length * THREADS_PER_BLOCK < old_range_length)
+                        range_length+=1;
+                old_range_length=range_length;
+
+                // cache the boundary keys
+                range_start = range_offset + threadIdx.x * range_length;
+                cache[threadIdx.x]=data[range_start];
+                syncthreads();
+
+                // if the seached key is within this thread’s subset,
+                // make it the one for the next iteration
+                if (sk<=cache[threadIdx.x] && sk>cache[threadIdx.x-1])
+                        range_offset = range_start;
+
+                // all threads need to start next iteration with the new subset
+                syncthreads();
+        }
+
+        // store search result
+        range_start = range_offset + threadIdx.x;
+        if (sk==data[range_start] && sk > data[range_start-1])
+        {
+            //local_result++;
+            *start_index = range_start;
+            //printf("Lower [%d] ----> %d\n", threadIdx.x, range_start);
+        }
+
 
         
 }
