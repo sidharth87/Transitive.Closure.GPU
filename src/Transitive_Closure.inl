@@ -1,22 +1,21 @@
-void Transitive_closure(const std::string &filename)
+void Transitive_closure(const std::string filename, int table_size1, int table_size2, int partition_size1, int partition_size2, int query_value)
 {
 	//set cuda device
 	cudaSetDevice(0);
 
-	int dbuf1_size = 256;
-	int dbuf2_size = 256;
-        int dbuf1_partition = 32;
-        int dbuf2_partition = 32;
+	int dbuf1_size = table_size1;
+	int dbuf2_size = table_size2;
+        int dbuf1_partition = partition_size1;
+        int dbuf2_partition = partition_size2;
 
-	const size_t tuple_size = 1; 
+	const size_t tuple_size = 2; 
 
-	dynamic_buffer<unsigned int, cusp::device_memory, tuple_size> gbuf1;
-	dynamic_buffer<unsigned int, cusp::device_memory, tuple_size> gbuf2;
-	dynamic_buffer<unsigned int, cusp::host_memory, tuple_size> query_output_buffer;
+	dynamic_buffer<unsigned int, cusp::device_memory, tuple_size> gbuf1 (0, dbuf1_size, dbuf1_size);
+	dynamic_buffer<unsigned int, cusp::device_memory, tuple_size> gbuf2 (0, dbuf2_size, dbuf2_size);
+	dynamic_buffer<unsigned int, cusp::device_memory, tuple_size> query_output_buffer;
 
         cusp::array1d<unsigned int, cusp::host_memory> cbuf1(dbuf1_size);
 	cusp::array1d<unsigned int, cusp::host_memory> cbuf2(dbuf2_size);
-
 	cusp::array1d<unsigned int, cusp::host_memory> output_buffer[tuple_size];
 
         int dbuf1_partition_size = dbuf1_size/dbuf1_partition;
@@ -39,36 +38,23 @@ void Transitive_closure(const std::string &filename)
 	   gbuf2.data_buffer[i] = cbuf2;
 	}
 
-	gbuf1.is_sorted = 0;
-	gbuf1.total_size = dbuf1_size;
-	gbuf1.used_size = dbuf1_size;
+	// Output the input buffers
+	gbuf1.output_dynamic_buffer(filename+"_input_1");
+	gbuf2.output_dynamic_buffer(filename+"_input_2");
 
-	gbuf2.is_sorted = 0;
-	gbuf2.total_size = dbuf2_size;
-	gbuf2.used_size = dbuf2_size;
-
+	// insert gbuf2 into gbuf1
 	gbuf1.insert(gbuf2);
 
-	for (int i = 0; i < tuple_size; i++)
-	{
-		output_buffer[i] = gbuf1.data_buffer[i];
-		for (int j = 0; j < gbuf1.used_size; j++)
-			printf("output buffer %d = %d\n", j, output_buffer[i][j]);
-	}
+	// Output gbuf1
+	gbuf1.output_dynamic_buffer(filename+"_insert");
      
-        query_output_buffer = gbuf1.select(2, 0);
+
+	// Query
+        query_output_buffer = gbuf1.select(query_value, 0);
+
         printf("After sorting\n");
-	for (int i = 0; i < tuple_size; i++)
-	{
-		output_buffer[i] = gbuf1.data_buffer[i];
-		for (int j = 0; j < gbuf1.used_size; j++)
-			printf("output buffer %d = %d\n", j, output_buffer[i][j]);
-	}
+	gbuf1.output_dynamic_buffer(filename+"_sort");
 
         printf("Query output\n");
-	for (int i = 0; i < tuple_size; i++)
-	{
-		for (int j = 0; j < query_output_buffer.used_size; j++)
-			printf("Query output buffer %d = %d\n", j, query_output_buffer.data_buffer[i][j]);
-	}
+	query_output_buffer.output_dynamic_buffer(filename+"_query_output");
 }

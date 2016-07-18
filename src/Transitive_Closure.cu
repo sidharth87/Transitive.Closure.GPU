@@ -1,3 +1,5 @@
+#include<stdio.h>
+#include<stdlib.h>
 #include "Matrix_Test.h"
 #include "load_matrix.h"
 #include "dynamic_buffer.h"
@@ -36,12 +38,12 @@ void destroyStreams()
 		cudaStreamDestroy(__streams[i]);
 }
 
-void Matrix_Test(const std::string filename)
+void Matrix_Test(const std::string filename, int table1_size, int table2_size, int ps1, int ps2, int q)
 {
 	#if(MULTI_GPU == 1)
 		//FillTests(filename);
 	#else
-		Transitive_closure(filename);
+		Transitive_closure(filename, table1_size, table2_size, ps1, ps2, q);
 	#endif
 }
 
@@ -51,15 +53,15 @@ void Matrix_Test(const std::string filename)
 
 void runTest(int argc, char** argv)
 {
-	if(argc != 2)
+	if(argc != 7)
 	{
 		fprintf(stderr, "Invalid input...\n");
-		fprintf(stderr, "Usage: CFA <testfile>\n");
+		fprintf(stderr, "Usage: TC <filename template> table_size1 table_size2 partiiton_size1 partition_size2 query_value\n");
 		exit(1);
 	}
 
 	std::string filename(argv[1]);
-	Transitive_closure(filename);
+	Transitive_closure(filename, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
 }
 
 int main(int argc, char **argv)
