@@ -32,6 +32,8 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 	__shared__ int range_offset;					// index to subset for current iteration
         //int local_result;
         int range_length_copy = range_length;
+        *start_index = -1;
+        *stop_index = -1;
 
 	int sk, old_range_length=range_length,range_start;
 	// initialize search range using a single thread
@@ -80,7 +82,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 	{
 	    //local_result++;
             *stop_index = range_start;
-	    //printf("Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
+	    printf("Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
 	    //printf("[%d] Upper [%d] ----> %d\n", range_offset, threadIdx.x, range_start);
 	}
 

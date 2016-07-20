@@ -1,3 +1,5 @@
+#include <time.h>
+
 void Transitive_closure(const std::string filename, int table_size1, int table_size2, int partition_size1, int partition_size2, int query_value)
 {
 	//set cuda device
@@ -16,27 +18,40 @@ void Transitive_closure(const std::string filename, int table_size1, int table_s
 
         cusp::array1d<unsigned int, cusp::host_memory> cbuf1(dbuf1_size);
 	cusp::array1d<unsigned int, cusp::host_memory> cbuf2(dbuf2_size);
+        cusp::array1d<unsigned int, cusp::host_memory> cbuf1_rt(dbuf1_size);
+	cusp::array1d<unsigned int, cusp::host_memory> cbuf2_rt(dbuf2_size);
 	cusp::array1d<unsigned int, cusp::host_memory> output_buffer[tuple_size];
 
         int dbuf1_partition_size = dbuf1_size/dbuf1_partition;
 	for (int i = 0; i < dbuf1_partition; i++)
         {
 	  for (int j = 0; j < dbuf1_partition_size; j++)
-	    cbuf1[i*dbuf1_partition_size + j] = j;
+ 	  {
+	    cbuf1[i*dbuf1_partition_size + j] = j + 123;
+	    srand (time(NULL));
+	    cbuf1_rt[i*dbuf1_partition_size + j] = 500;//rand() % 10 + 1;
+	  }
         }
 
         int dbuf2_partition_size = dbuf2_size/dbuf2_partition;
 	for (int i = 0; i < dbuf2_partition; i++)
         {
 	  for (int j = 0; j < dbuf2_partition_size; j++)
-	    cbuf2[i*dbuf2_partition_size + j] = j;
+	  {
+	    cbuf2[i*dbuf2_partition_size + j] = j + 123;
+	    srand (time(NULL));
+	    cbuf2_rt[i*dbuf1_partition_size + j] = 51*j;//rand() % 10 + 1;
+	  }
         }
   
-	for (int i = 0; i < tuple_size; i++)
-	{
-	   gbuf1.data_buffer[i] = cbuf1;
-	   gbuf2.data_buffer[i] = cbuf2;
-	}
+	//for (int i = 0; i < tuple_size; i++)
+	//{
+	gbuf1.data_buffer[0] = cbuf1;
+	gbuf2.data_buffer[0] = cbuf2;
+
+	gbuf1.data_buffer[1] = cbuf1_rt;
+	gbuf2.data_buffer[1] = cbuf2_rt;
+	//}
 
 	// Output the input buffers
 	gbuf1.output_dynamic_buffer(filename+"_input_1");

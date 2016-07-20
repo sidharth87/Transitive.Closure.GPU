@@ -5,6 +5,14 @@
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
 #include <thrust/inner_product.h>
+
+#include <thrust/tuple.h>
+#include <thrust/functional.h>
+#include <thrust/device_vector.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/unique.h>
+
+
 //#include <thrust-1.8/system/cuda/experimental/pinned_allocator.h>
 
 //cusp and thrust

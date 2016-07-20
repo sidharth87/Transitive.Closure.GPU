@@ -88,6 +88,46 @@ struct dynamic_buffer         //dynamic buffer
            data_buffer[i].resize(new_size);
     }
 
+    void sort_and_remove_duplicates()
+    {
+	if (is_sorted == 0)
+        {
+            switch(tuple_size)
+            {
+                case 1:
+                thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
+                break;
+
+                case 2:
+                thrust::sort_by_key(data_buffer[1].begin(), data_buffer[1].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
+                output_dynamic_buffer("sort_1");
+                thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin() )));
+                output_dynamic_buffer("sort_2");
+                break;
+
+                //case 3:
+                //thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin(), data_buffer[2].begin() )));
+                //break;
+
+            }
+            is_sorted = 1;
+            typedef thrust::device_vector<unsigned int>                IntVector;
+            typedef IntVector::iterator                         IntIterator;
+            typedef thrust::tuple< IntIterator, IntIterator >   IntIteratorTuple;
+            typedef thrust::zip_iterator< IntIteratorTuple >    ZipIterator;
+
+            ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].end(), data_buffer[1].end() ) ) );
+
+            IntIteratorTuple endTuple = newEnd.get_iterator_tuple();
+
+            data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
+            data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );
+            printf("RANGEx: %d - %d \n", data_buffer[0].size(), data_buffer[1].size());
+	    used_size = data_buffer[0].size() - 1;
+            output_dynamic_buffer("sort_3");
+        }
+    }
+
     // Check if resize is required
     // insert whenever possible, if not then append at the very end, and then sort the buffer
     void insert(const size_t n_tuples,  cusp::array1d<VALUE_TYPE, MEM_TYPE> *tuple)
@@ -103,7 +143,9 @@ struct dynamic_buffer         //dynamic buffer
 
         used_size = used_size + n_tuples;
         is_sorted = 0;
+	sort_and_remove_duplicates();
     }
+
     
     // Check if resize is required first
     // Concatenate new tuples onto the end of data_buffer (sorting is done lazily)
@@ -121,6 +163,7 @@ struct dynamic_buffer         //dynamic buffer
 
         used_size = used_size + buff.used_size;
         is_sorted = 0;
+	sort_and_remove_duplicates();
     }
 
     void insert(const dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size>& buff, int offset)
@@ -137,6 +180,8 @@ struct dynamic_buffer         //dynamic buffer
 
         used_size = used_size + buff.used_size - offset;
         is_sorted = 0;
+
+	sort_and_remove_duplicates();
     }
 
 
@@ -147,13 +192,14 @@ struct dynamic_buffer         //dynamic buffer
             resize((used_size + size)*RESIZE_MULTIPLIER);
             total_size = (used_size + size)*RESIZE_MULTIPLIER;
         }
-        printf("In size = %d Out size = %d\n", used_size, buff.used_size);
+        printf("[INSERT] In size = %d Out size = %d\n", used_size, size);
 
         for (int i = 0; i < tuple_size; i++)
             device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[i][0]), TPC(&buff.data_buffer[i][offset]), used_size, size);
 
         used_size = used_size + size;
         is_sorted = 0;
+	sort_and_remove_duplicates();
     }
 
 
@@ -161,6 +207,7 @@ struct dynamic_buffer         //dynamic buffer
     // p-ary search for multiple threads
     dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> select(VALUE_TYPE value_x, int index_x)
     {
+/*
 	if (is_sorted == 0)
 	{
 	    switch(tuple_size)
@@ -170,7 +217,10 @@ struct dynamic_buffer         //dynamic buffer
 		break;
 
 		case 2:
+		thrust::sort_by_key(data_buffer[1].begin(), data_buffer[1].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
+                output_dynamic_buffer("sort_1");
 		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin() )));
+                output_dynamic_buffer("sort_2");
 		break;
 
 		//case 3:
@@ -179,7 +229,24 @@ struct dynamic_buffer         //dynamic buffer
 
 	    }
 	    is_sorted = 1;
+	    typedef thrust::device_vector<unsigned int>                IntVector;
+	    typedef IntVector::iterator                         IntIterator;
+	    typedef thrust::tuple< IntIterator, IntIterator >   IntIteratorTuple;
+	    typedef thrust::zip_iterator< IntIteratorTuple >    ZipIterator;
+
+	    ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].end(), data_buffer[1].end() ) ) );
+
+	    IntIteratorTuple endTuple = newEnd.get_iterator_tuple();
+
+	    data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
+	    data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );	    
+ 	    printf("RANGEx: %d - %d \n", data_buffer[0].size(), data_buffer[1].size());
+	    used_size = data_buffer[0].size();
+            output_dynamic_buffer("sort_3");
+
+
 	}
+*/
 	// search
         int h_lower_bound = 0, h_upper_bound = 0;
 	
@@ -194,7 +261,11 @@ struct dynamic_buffer         //dynamic buffer
         printf("Query range = %d %d\n", h_lower_bound, h_upper_bound);
 #if 1
 
-        dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> output(1, (h_upper_bound - h_lower_bound + 1), (h_upper_bound - h_lower_bound + 1));
+        dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> output(1, /*(h_upper_bound - h_lower_bound + 1)*/0, 0);
+
+        if (h_lower_bound == -1 && h_upper_bound == -1)
+          return output;
+
         output.insert(*this, h_lower_bound, (h_upper_bound - h_lower_bound + 1));
         /*
         for (int i = 0; i < tuple_size; i++)
