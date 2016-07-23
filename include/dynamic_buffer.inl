@@ -78,11 +78,19 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 
 	// store search result
 	range_start = range_offset + threadIdx.x;
-	if (sk==data[range_start] && sk < data[range_start+1])
+	if (range_start == range_length - 1)
+	{
+	  if (sk==data[range_start])
+	  {
+	    *stop_index = range_start;
+            printf("[A] Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
+	  }
+	}
+	else if (sk==data[range_start] && sk < data[range_start+1])
 	{
 	    //local_result++;
             *stop_index = range_start;
-	    printf("Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
+	    printf("[B] Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
 	    //printf("[%d] Upper [%d] ----> %d\n", range_offset, threadIdx.x, range_start);
 	}
 

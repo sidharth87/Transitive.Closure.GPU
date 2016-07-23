@@ -13,7 +13,7 @@ using namespace std;
 #define BLOCK_COUNT 1
 #define TPC(x) thrust::raw_pointer_cast(x)
 
-#define RESIZE_MULTIPLIER 1.5
+#define RESIZE_MULTIPLIER 1
 #define ORDERING    ROW_MAJOR
 
 template <typename VALUE_TYPE, typename MEM_TYPE, size_t tuple_size>
@@ -28,7 +28,11 @@ struct dynamic_buffer         //dynamic buffer
     //size_t tuple_size;      // number of variables/columns in the predicate/in each tuple
 
     dynamic_buffer()
-    {}
+    {
+	is_sorted = 0;
+	total_size = 0;
+	used_size = 0;
+    }
     
     dynamic_buffer(int sort_status, size_t tsize, int usize)
     {
@@ -90,8 +94,10 @@ struct dynamic_buffer         //dynamic buffer
 
     void sort_and_remove_duplicates()
     {
+	printf("[SORT Routine]\n");
 	if (is_sorted == 0)
         {
+            printf("[Before Buffer Size]: %d  %d \n", data_buffer[0].size(), data_buffer[1].size());
             switch(tuple_size)
             {
                 case 1:
@@ -110,8 +116,8 @@ struct dynamic_buffer         //dynamic buffer
                 //break;
 
             }
-            is_sorted = 1;
-            typedef thrust::device_vector<unsigned int>                IntVector;
+	
+            typedef thrust::device_vector<unsigned int>        IntVector;
             typedef IntVector::iterator                         IntIterator;
             typedef thrust::tuple< IntIterator, IntIterator >   IntIteratorTuple;
             typedef thrust::zip_iterator< IntIteratorTuple >    ZipIterator;
@@ -122,9 +128,14 @@ struct dynamic_buffer         //dynamic buffer
 
             data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
             data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );
-            printf("RANGEx: %d - %d \n", data_buffer[0].size(), data_buffer[1].size());
-	    used_size = data_buffer[0].size() - 1;
+	    used_size = data_buffer[0].size();// - 1;
+	    total_size = data_buffer[0].size();// - 1;
+	    data_buffer[0].resize(used_size);
+	    data_buffer[1].resize(used_size);
+            printf("[After Buffer Size]: [%d] : %d %d \n", used_size, data_buffer[0].size() , data_buffer[1].size() );
             output_dynamic_buffer("sort_3");
+
+            is_sorted = 1;
         }
     }
 
@@ -143,7 +154,7 @@ struct dynamic_buffer         //dynamic buffer
 
         used_size = used_size + n_tuples;
         is_sorted = 0;
-	sort_and_remove_duplicates();
+	//sort_and_remove_duplicates();
     }
 
     
@@ -163,17 +174,18 @@ struct dynamic_buffer         //dynamic buffer
 
         used_size = used_size + buff.used_size;
         is_sorted = 0;
-	sort_and_remove_duplicates();
+	//sort_and_remove_duplicates();
     }
 
     void insert(const dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size>& buff, int offset)
     {
+        printf("[B] In size = %d Out size = %d offset = %d total size = %d\n", used_size, buff.used_size, offset, total_size);
         if (used_size + buff.used_size - offset > total_size)
         {
             resize((used_size + buff.used_size - offset)*RESIZE_MULTIPLIER);
             total_size = (used_size + buff.used_size - offset)*RESIZE_MULTIPLIER;
         }
-        printf("In size = %d Out size = %d\n", used_size, buff.used_size);       
+        printf("[A] In size = %d Out size = %d offset = %d total size = %d\n", used_size, buff.used_size, offset, total_size);
         
 	for (int i = 0; i < tuple_size; i++)
 	    device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[i][0]), TPC(&buff.data_buffer[i][offset]), used_size, buff.used_size - offset);
@@ -181,7 +193,7 @@ struct dynamic_buffer         //dynamic buffer
         used_size = used_size + buff.used_size - offset;
         is_sorted = 0;
 
-	sort_and_remove_duplicates();
+	//sort_and_remove_duplicates();
     }
 
 
@@ -192,61 +204,21 @@ struct dynamic_buffer         //dynamic buffer
             resize((used_size + size)*RESIZE_MULTIPLIER);
             total_size = (used_size + size)*RESIZE_MULTIPLIER;
         }
-        printf("[INSERT] In size = %d Out size = %d\n", used_size, size);
+        printf("[INSERT] In size = %d Out size = %d OFFSET %d\n", used_size, size, offset);
 
         for (int i = 0; i < tuple_size; i++)
             device::dynamic_buffer_insert<VALUE_TYPE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[i][0]), TPC(&buff.data_buffer[i][offset]), used_size, size);
 
         used_size = used_size + size;
         is_sorted = 0;
-	sort_and_remove_duplicates();
+	//sort_and_remove_duplicates();
     }
 
 
     // based on first index of the predicate
     // p-ary search for multiple threads
-    dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> select(VALUE_TYPE value_x, int index_x)
+    dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> select(VALUE_TYPE value_x, int index_x, int select_size)
     {
-/*
-	if (is_sorted == 0)
-	{
-	    switch(tuple_size)
-	    {
-		case 1:
-  		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
-		break;
-
-		case 2:
-		thrust::sort_by_key(data_buffer[1].begin(), data_buffer[1].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[0].begin() )));
-                output_dynamic_buffer("sort_1");
-		thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin() )));
-                output_dynamic_buffer("sort_2");
-		break;
-
-		//case 3:
-		//thrust::sort_by_key(data_buffer[0].begin(), data_buffer[0].begin()+used_size, thrust::make_zip_iterator(thrust::make_tuple(data_buffer[1].begin(), data_buffer[2].begin() )));
-		//break;
-
-	    }
-	    is_sorted = 1;
-	    typedef thrust::device_vector<unsigned int>                IntVector;
-	    typedef IntVector::iterator                         IntIterator;
-	    typedef thrust::tuple< IntIterator, IntIterator >   IntIteratorTuple;
-	    typedef thrust::zip_iterator< IntIteratorTuple >    ZipIterator;
-
-	    ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].end(), data_buffer[1].end() ) ) );
-
-	    IntIteratorTuple endTuple = newEnd.get_iterator_tuple();
-
-	    data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
-	    data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );	    
- 	    printf("RANGEx: %d - %d \n", data_buffer[0].size(), data_buffer[1].size());
-	    used_size = data_buffer[0].size();
-            output_dynamic_buffer("sort_3");
-
-
-	}
-*/
 	// search
         int h_lower_bound = 0, h_upper_bound = 0;
 	
@@ -254,31 +226,25 @@ struct dynamic_buffer         //dynamic buffer
         cudaMalloc(&g_lower_bound, sizeof(int));
         cudaMalloc(&g_upper_bound, sizeof(int));
 
-	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), used_size, value_x, (g_lower_bound), (g_upper_bound));
+	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), /*used_size*/select_size, value_x, (g_lower_bound), (g_upper_bound));
 
         cudaMemcpy(&h_lower_bound, g_lower_bound, sizeof(int), cudaMemcpyDeviceToHost); 
         cudaMemcpy(&h_upper_bound, g_upper_bound, sizeof(int), cudaMemcpyDeviceToHost); 
         printf("Query range = %d %d\n", h_lower_bound, h_upper_bound);
-#if 1
 
         dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> output(1, /*(h_upper_bound - h_lower_bound + 1)*/0, 0);
+
+        if (h_lower_bound == -1 && h_upper_bound != -1)
+          h_lower_bound = h_upper_bound;
+
+        if (h_lower_bound != -1 && h_upper_bound == -1)
+          h_upper_bound = h_lower_bound;
 
         if (h_lower_bound == -1 && h_upper_bound == -1)
           return output;
 
         output.insert(*this, h_lower_bound, (h_upper_bound - h_lower_bound + 1));
-        /*
-        for (int i = 0; i < tuple_size; i++)
-        {
-          cusp::array1d<VALUE_TYPE, cusp::host_memory> temp(h_upper_bound - h_lower_bound + 1);
-          for (int j = 0; j < h_upper_bound - h_lower_bound + 1; j++)
-          {
-            temp[j] = data_buffer[i][j + h_lower_bound];
-          }
-          output.data_buffer[i] = temp;
-        }
-        */
-#endif	
+	//output.output_dynamic_buffer("XXXXXXXXXX");
 	return output;
     }
 

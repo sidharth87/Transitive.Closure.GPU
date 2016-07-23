@@ -43,7 +43,8 @@ void Matrix_Test(const std::string filename, int table1_size, int table2_size, i
 	#if(MULTI_GPU == 1)
 		//FillTests(filename);
 	#else
-		Transitive_closure(filename, table1_size, table2_size, ps1, ps2, q);
+		//Transitive_closure(filename, table1_size, table2_size, ps1, ps2, q);
+		Transitive_closure(filename, table1_size);
 	#endif
 }
 
@@ -53,15 +54,17 @@ void Matrix_Test(const std::string filename, int table1_size, int table2_size, i
 
 void runTest(int argc, char** argv)
 {
-	if(argc != 7)
+	if(argc != 3)
 	{
 		fprintf(stderr, "Invalid input...\n");
-		fprintf(stderr, "Usage: TC <filename template> table_size1 table_size2 partiiton_size1 partition_size2 query_value\n");
+		//fprintf(stderr, "Usage: TC <filename template> table_size1 table_size2 partiiton_size1 partition_size2 query_value\n");
+		fprintf(stderr, "Usage: TC <input .csv file> tuple_count\n");
 		exit(1);
 	}
 
 	std::string filename(argv[1]);
-	Transitive_closure(filename, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
+	Transitive_closure(filename, atoi(argv[2]));
+	//Transitive_closure(filename, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
 }
 
 int main(int argc, char **argv)
