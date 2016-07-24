@@ -60,7 +60,11 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 
 		// cache the boundary keys
 		range_start = range_offset + threadIdx.x * range_length;
-		cache[threadIdx.x]=data[range_start];
+		if (range_start >= range_length_copy)
+		  cache[threadIdx.x]=0x7FFFFFFF;//data[range_start];
+		else
+  		  cache[threadIdx.x]=data[range_start];
+
 		syncthreads();
 
 		// if the seached key is within this thread’s subset,
@@ -68,8 +72,8 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 		//printf("[%d] --> %d (%d %d)\n", threadIdx.x, sk, cache[threadIdx.x], cache[threadIdx.x+1]);
 		if (sk>=cache[threadIdx.x] && sk<cache[threadIdx.x+1])
 		{
-			printf("[HIT U %d] --> %d (%d %d)\n", threadIdx.x, sk, cache[threadIdx.x], cache[threadIdx.x+1]);
 			range_offset = range_start;
+			printf("[HIT U %d] --> %d (%d %d)  RO %d RL %d TPB %d\n", threadIdx.x, sk, cache[threadIdx.x], cache[threadIdx.x+1], range_offset, range_length, THREADS_PER_BLOCK);
 		}
 
 		// all threads need to start next iteration with the new subset
@@ -78,7 +82,8 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 
 	// store search result
 	range_start = range_offset + threadIdx.x;
-	if (range_start == range_length - 1)
+	
+	if (range_start == range_length_copy - 1)
 	{
 	  if (sk==data[range_start])
 	  {
@@ -86,7 +91,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
             printf("[A] Upper [%d] ----> %d\n", threadIdx.x, *stop_index);
 	  }
 	}
-	else if (sk==data[range_start] && sk < data[range_start+1])
+	else if ((range_start < range_length_copy) && sk==data[range_start] && sk < data[range_start+1])
 	{
 	    //local_result++;
             *stop_index = range_start;
@@ -101,7 +106,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 	
         if (threadIdx.x==0) 
 	{
-		range_offset=range_length - 1;
+		range_offset=range_length_copy - 1;
 		for (int i = 0; i < THREADS_PER_BLOCK+2; i++)
 		  cachel[i] = 0;
 		// cache search key and upper bound in shared memory
@@ -122,7 +127,10 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 
                 // cache the boundary keys
                 range_start = range_offset - threadIdx.x * range_length;
-                cachel[threadIdx.x]=data[range_start];
+	        if (range_start < 0)
+                  cachel[threadIdx.x]=0x80000000;
+		else
+                  cachel[threadIdx.x]=data[range_start];
                 syncthreads();
 
                 // if the seached key is within this thread’s subset,
@@ -131,7 +139,7 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
                 //if (sk>cache[threadIdx.x] && sk<=cache[threadIdx.x+1])
                 if (sk>cachel[threadIdx.x + 1] && sk<=cachel[threadIdx.x])
 		{
-			printf("[HIT L %d] --> %d (%d %d)\n", threadIdx.x, sk, cachel[threadIdx.x], cachel[threadIdx.x+1]);
+			printf("[HIT L %d] --> %d (%d %d) RO %d RL %d \n", threadIdx.x, sk, cachel[threadIdx.x], cachel[threadIdx.x+1], range_start, range_length);
                         range_offset = range_start;
 		}
 
@@ -142,12 +150,21 @@ parySearchGPU(VALUE_TYPE *data, int range_length, VALUE_TYPE search_keys, int* s
 #if 1
         // store search result
         range_start = range_offset - threadIdx.x;
-        if (sk==data[range_start] && sk > data[range_start-1])
+	if (range_start == 0)
+	{
+	  if (sk==data[range_start])
+	  {
+            *start_index = range_start;
+            printf("A [%d] Lower [%d] ----> %d\n", range_offset, threadIdx.x, range_start);
+	  }	
+	}
+        else if (range_start > 0 && (sk==data[range_start] && sk > data[range_start-1]))
         {
             *start_index = range_start;
-            printf("[%d] Lower [%d] ----> %d\n", range_offset, threadIdx.x, range_start);
+            printf("B [%d] Lower [%d] ----> %d\n", range_offset, threadIdx.x, range_start);
             //printf("Lower [%d] ----> %d\n", threadIdx.x, *start_index);
         }
+
 #endif
 
         

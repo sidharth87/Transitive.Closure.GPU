@@ -13,7 +13,7 @@ using namespace std;
 #define BLOCK_COUNT 1
 #define TPC(x) thrust::raw_pointer_cast(x)
 
-#define RESIZE_MULTIPLIER 1
+#define RESIZE_MULTIPLIER 2
 #define ORDERING    ROW_MAJOR
 
 template <typename VALUE_TYPE, typename MEM_TYPE, size_t tuple_size>
@@ -97,7 +97,7 @@ struct dynamic_buffer         //dynamic buffer
 	printf("[SORT Routine]\n");
 	if (is_sorted == 0)
         {
-            printf("[Before Buffer Size]: %d  %d \n", data_buffer[0].size(), data_buffer[1].size());
+            printf("[Before Buffer Size]: [%d] %d  %d \n", used_size, data_buffer[0].size(), data_buffer[1].size());
             switch(tuple_size)
             {
                 case 1:
@@ -122,16 +122,24 @@ struct dynamic_buffer         //dynamic buffer
             typedef thrust::tuple< IntIterator, IntIterator >   IntIteratorTuple;
             typedef thrust::zip_iterator< IntIteratorTuple >    ZipIterator;
 
-            ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].end(), data_buffer[1].end() ) ) );
+            //ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].end(), data_buffer[1].end() ) ) );
+            ZipIterator newEnd = thrust::unique( thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin(), data_buffer[1].begin() ) ), thrust::make_zip_iterator( thrust::make_tuple( data_buffer[0].begin()+used_size, data_buffer[1].begin()+used_size ) ) );
 
             IntIteratorTuple endTuple = newEnd.get_iterator_tuple();
 
-            data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
-            data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );
-	    used_size = data_buffer[0].size();// - 1;
-	    total_size = data_buffer[0].size();// - 1;
-	    data_buffer[0].resize(used_size);
-	    data_buffer[1].resize(used_size);
+            //data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].end() );
+            //data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].end() );
+            data_buffer[0].erase( thrust::get<0>( endTuple ), data_buffer[0].begin() + used_size );
+            data_buffer[1].erase( thrust::get<1>( endTuple ), data_buffer[1].begin() + used_size );
+            printf("[EXP 1]: [%d] \n", data_buffer[0].begin() + used_size - thrust::get<0>( endTuple ) );
+            printf("[EXP 2]: [%d] \n", data_buffer[1].begin() + used_size - thrust::get<1>( endTuple ) );
+	    int erased_count = (int) (data_buffer[1].begin() + used_size - thrust::get<1>( endTuple ));
+	    used_size = used_size - erased_count;
+	    total_size = total_size - erased_count;
+
+	    //total_size = data_buffer[0].size();// - 1;
+	    //data_buffer[0].resize(used_size);
+	    //data_buffer[1].resize(used_size);
             printf("[After Buffer Size]: [%d] : %d %d \n", used_size, data_buffer[0].size() , data_buffer[1].size() );
             output_dynamic_buffer("sort_3");
 
@@ -226,11 +234,15 @@ struct dynamic_buffer         //dynamic buffer
         cudaMalloc(&g_lower_bound, sizeof(int));
         cudaMalloc(&g_upper_bound, sizeof(int));
 
+	printf("SS = %d %d\n", select_size, value_x);
 	device::parySearchGPU<VALUE_TYPE, BLOCK_SIZE> <<<BLOCK_COUNT, BLOCK_SIZE>>> (TPC(&data_buffer[0][0]), /*used_size*/select_size, value_x, (g_lower_bound), (g_upper_bound));
 
         cudaMemcpy(&h_lower_bound, g_lower_bound, sizeof(int), cudaMemcpyDeviceToHost); 
         cudaMemcpy(&h_upper_bound, g_upper_bound, sizeof(int), cudaMemcpyDeviceToHost); 
         printf("Query range = %d %d\n", h_lower_bound, h_upper_bound);
+
+	cudaFree(g_lower_bound);
+	cudaFree(g_upper_bound);
 
         dynamic_buffer<VALUE_TYPE, MEM_TYPE, tuple_size> output(1, /*(h_upper_bound - h_lower_bound + 1)*/0, 0);
 

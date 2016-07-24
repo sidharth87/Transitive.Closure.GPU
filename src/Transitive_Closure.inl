@@ -2,7 +2,7 @@
 #include <vector>
 
 //void Transitive_closure(const std::string filename, int table_size1, int table_size2, int partition_size1, int partition_size2, int query_value)
-void Transitive_closure(const std::string filename, int tuple_count)
+void Transitive_closure(const std::string filename, int tuple_count, int loop)
 {
 	//set cuda device
 	cudaSetDevice(0);
@@ -77,8 +77,8 @@ void Transitive_closure(const std::string filename, int tuple_count)
 	query_output_buffer.output_dynamic_buffer(filename+"_query_output");
 #endif
 
-        cusp::array1d<unsigned int, cusp::host_memory> tl_index(tuple_count);
-	cusp::array1d<unsigned int, cusp::host_memory> tr_index(tuple_count);
+        cusp::array1d<unsigned int, cusp::host_memory> tl_index(tuple_count );
+	cusp::array1d<unsigned int, cusp::host_memory> tr_index(tuple_count );
 
 	const int tuple_size = 2;
 
@@ -166,8 +166,9 @@ void Transitive_closure(const std::string filename, int tuple_count)
 */
 
 	for (;;)
-	//for (int y = 0; y < 2; y++)
+	//for (int y = 0; y < loop; y++)
 	{
+	  //printf("[YYYYYYYYYYYYY]: %d\n", y);
 	  for (int i = 0; i < BUCKET_COUNT; i++)
 	  {
             cusp::array1d<unsigned int, cusp::host_memory> output_buffer;
@@ -185,12 +186,12 @@ void Transitive_closure(const std::string filename, int tuple_count)
 	      temp_spine = TC_spine.select(output_buffer[j], 0, current_spine_buffer_size);
 	      //temp_spine = TC_spine.select(TC_spine.dbuffer[i].data_buffer[1][j], 0);
 
-	      char name[512];
-	      sprintf(name, "filename_%s_%d", filename.c_str(), j);
-              temp_spine.output_spine(name);
+	      //char name[512];
+	      //sprintf(name, "filename_%s_%d", filename.c_str(), j);
+              //temp_spine.output_spine(name);
 
 	      temp_spine.replace_index(output_buffer2[j], 0);
-              temp_spine.output_spine(name);
+              //temp_spine.output_spine(name);
 	      TC_spine.insert(temp_spine);
               TC_spine.output_spine(filename+"_TC1");
 	    }
@@ -199,7 +200,6 @@ void Transitive_closure(const std::string filename, int tuple_count)
 	  TC_spine.sort_and_remove_duplicates();
           TC_spine.output_spine(filename+"_TC2");
 
-	  	  
 	  TC_count = 0;
 	  for (int i = 0; i < BUCKET_COUNT; i++)
 	    TC_count = TC_count + TC_spine.dbuffer[i].used_size;

@@ -44,7 +44,7 @@ void Matrix_Test(const std::string filename, int table1_size, int table2_size, i
 		//FillTests(filename);
 	#else
 		//Transitive_closure(filename, table1_size, table2_size, ps1, ps2, q);
-		Transitive_closure(filename, table1_size);
+		//Transitive_closure(filename, table1_size);
 	#endif
 }
 
@@ -54,7 +54,7 @@ void Matrix_Test(const std::string filename, int table1_size, int table2_size, i
 
 void runTest(int argc, char** argv)
 {
-	if(argc != 3)
+	if(argc != 4)
 	{
 		fprintf(stderr, "Invalid input...\n");
 		//fprintf(stderr, "Usage: TC <filename template> table_size1 table_size2 partiiton_size1 partition_size2 query_value\n");
@@ -63,7 +63,7 @@ void runTest(int argc, char** argv)
 	}
 
 	std::string filename(argv[1]);
-	Transitive_closure(filename, atoi(argv[2]));
+	Transitive_closure(filename, atoi(argv[2]), atoi(argv[3]));
 	//Transitive_closure(filename, atoi(argv[2]), atoi(argv[3]), atoi(argv[4]), atoi(argv[5]), atoi(argv[6]));
 }
 
